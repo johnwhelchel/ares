@@ -1,0 +1,6 @@
+[package]
+name = "ares"
+version = "0.1.0"
+authors = ["John Whelchel <john.l.whelchel@gmail.com>"]
+
+[dependencies]

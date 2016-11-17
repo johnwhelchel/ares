@@ -2,5 +2,7 @@
 name = "ares"
 version = "0.1.0"
 authors = ["John Whelchel <john.l.whelchel@gmail.com>"]
+description = "A REPL for the rust language. Implemented by mimicking and infinite main function."
 
 [dependencies]
+rustyline = "1.0.0"

@@ -36,12 +36,17 @@ impl Ares {
 	}
 
 	fn prompt(&self) -> String {
-		format!(" ares:{:03}:{}-> ", self.line_number, self.indent_level)
+		if self.line_number < 1000 {
+			format!(" ares:{:03}:{}-> ", self.line_number, self.indent_level)
+		} else {
+			format!(" ares:{}:{}-> ", self.line_number, self.indent_level)
+		}
 	}
 
 	fn execute_line(&mut self, line: String) {
 		self.interrupted = false;
 		self.rl.add_history_entry(&line);
+		self.line_number += 1;
 		println!(" {}", line);
 	}
 

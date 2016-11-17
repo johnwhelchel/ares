@@ -65,6 +65,10 @@ impl Runner {
 		self.run_code()
 	}
 
+	pub fn loc(&self) -> usize {
+		self.code_lines.len()
+	}
+
 	fn run_code(&self) -> RunnerResult<String> {
 		self.write_code()?;
 		self.compile_code()?;
@@ -75,8 +79,22 @@ impl Runner {
 	fn write_code(&self) -> RunnerResult<()> {
 		let mut file = fs::OpenOptions::new().write(true).open(self.code_file_path.as_path())?;
 		file.write(b"fn main() {\n")?;
-		for l in &self.code_lines {
-			write!(&mut file, "\t{}\n", *l)?;
+		for (i, l) in self.code_lines.iter().enumerate() {
+			let mut new_line = l.clone();
+			if i == self.loc() - 1 {
+				let mut var_name = "__ares_tmp";
+				let split_by_eq = l.split("=").collect::<Vec<&str>>();
+				if split_by_eq.len() == 1 {
+					new_line = format!("let __ares_tmp = {};", new_line);
+				} else {
+					let before_first_eq = split_by_eq[0];
+					var_name = before_first_eq.split_whitespace().last().unwrap();
+				}
+				new_line = format!("{}\n\tprintln!(\"{{:?}}\", {});", new_line, var_name);
+			}
+			file.write(b"\t")?;
+			file.write(new_line.as_bytes())?;
+			file.write(b"\n")?;
 		}
 		file.write(b"}")?;
 		Ok(())

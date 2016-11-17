@@ -3,3 +3,5 @@ ideal_width = 150
 hard_tabs = true
 use_try_shorthand = true
 force_explicit_abi = false
+reorder_imports = true
+reorder_imports_names = true

@@ -1,10 +1,10 @@
-use std::error;
-use std::fmt;
-
-use rustyline::error::ReadlineError;
+use rust_runner::{Runner, RunnerError};
 use rustyline::Editor as Readline;
 
-use rust_runner::{Runner, RunnerError};
+use rustyline::error::ReadlineError;
+
+use std::error;
+use std::fmt;
 
 pub type StatusCode = i32;
 pub type Exit = Result<StatusCode, ReplError>;
@@ -21,7 +21,7 @@ pub struct Ares {
 #[derive(Debug)]
 pub enum ReplError {
 	RustyLine(ReadlineError),
-	RustRunner(RunnerError)
+	RustRunner(RunnerError),
 }
 
 impl From<RunnerError> for ReplError {
@@ -40,7 +40,7 @@ impl fmt::Display for ReplError {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match *self {
 			ReplError::RustyLine(ref err) => err.fmt(f),
-			ReplError::RustRunner(ref err) => err.fmt(f)
+			ReplError::RustRunner(ref err) => err.fmt(f),
 		}
 	}
 }
@@ -49,14 +49,14 @@ impl error::Error for ReplError {
 	fn description(&self) -> &str {
 		match *self {
 			ReplError::RustyLine(ref err) => err.description(),
-			ReplError::RustRunner(ref err) => err.description()
+			ReplError::RustRunner(ref err) => err.description(),
 		}
 	}
 
 	fn cause(&self) -> Option<&error::Error> {
 		match *self {
 			ReplError::RustyLine(ref err) => Some(err),
-			ReplError::RustRunner(ref err) => Some(err)
+			ReplError::RustRunner(ref err) => Some(err),
 		}
 	}
 }
@@ -68,18 +68,10 @@ impl Ares {
 			let prompt = self.prompt();
 			let readline = self.rl.readline(&prompt);
 			let handled_line = match readline {
-				Ok(line) => {
-					self.execute_line(line)
-				}
-				Err(ReadlineError::Interrupted) => {
-					self.interrupt_handler()
-				}
-				Err(ReadlineError::Eof) => {
-					self.eof_handler()
-				}
-				Err(some_other_error) => {
-					Some(Err(ReplError::RustyLine(some_other_error)))
-				}
+				Ok(line) => self.execute_line(line),
+				Err(ReadlineError::Interrupted) => self.interrupt_handler(),
+				Err(ReadlineError::Eof) => self.eof_handler(),
+				Err(some_other_error) => Some(Err(ReplError::RustyLine(some_other_error))),
 			};
 			match handled_line {
 				Some(exit) => return exit,

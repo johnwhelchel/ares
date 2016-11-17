@@ -5,14 +5,14 @@ mod ares;
 mod rust_runner;
 
 use std::process;
-use ares::{Ares, ReplError, StatusCode};
+use ares::{Ares, StatusCode};
 use std::error::Error;
 
 // TODO Docs
 fn main() {
-	let mut new_ares = Ares::new();
+	let new_ares = Ares::new();
 	let status_code = match new_ares {
-		Ok(mut ares) => run(ares),
+		Ok(ares) => run(ares),
 		Err(err) => {
 			println!("Error initializing Ares: {}\n...caused by {:?}", err.description(), err.cause());
 			1

@@ -6,7 +6,7 @@ use rustyline::Editor as Readline;
 
 use rust_runner::{Runner, RunnerError};
 
-type StatusCode = i32;
+pub type StatusCode = i32;
 pub type Exit = Result<StatusCode, ReplError>;
 
 #[derive(Debug)]

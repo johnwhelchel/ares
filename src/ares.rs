@@ -19,7 +19,6 @@ pub struct Ares {
 }
 
 #[derive(Debug)]
-// TODO Impl Error & From for this
 pub enum ReplError {
 	RustyLine(ReadlineError),
 	RustRunner(RunnerError)

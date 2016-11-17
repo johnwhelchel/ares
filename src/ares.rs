@@ -10,12 +10,12 @@ type StatusCode = i32;
 pub type Exit = Result<StatusCode, ReplError>;
 
 #[derive(Debug)]
-pub struct Ares<'a> {
+pub struct Ares {
 	rl: Readline<()>,
 	line_number: u32,
 	indent_level: u32,
 	interrupted: bool,
-	runner: Runner<'a>,
+	runner: Runner,
 }
 
 #[derive(Debug)]
@@ -62,7 +62,7 @@ impl error::Error for ReplError {
 	}
 }
 
-impl<'a> Ares<'a> {
+impl Ares {
 	pub fn init(&mut self) -> Exit {
 		print!("fn main() {{...\n");
 		loop {
@@ -125,7 +125,7 @@ impl<'a> Ares<'a> {
 		}
 	}
 
-	pub fn new() -> Result<Ares<'a>, ReplError> {
+	pub fn new() -> Result<Ares, ReplError> {
 		let runner = Runner::new()?;
 		Ok(Ares {
 			rl: Default::default(),

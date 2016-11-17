@@ -6,10 +6,10 @@ use std::fmt;
 use std::error;
 
 #[derive(Debug)]
-pub struct Runner<'a> {
+pub struct Runner {
 	pub code_lines: Vec<String>,
-	temp_dir: Option<&'a Path>,
-	code_file_path: Option<&'a Path>
+	temp_dir: PathBuf,
+	code_file_path: PathBuf
 }
 
 #[derive(Debug)]
@@ -45,15 +45,15 @@ impl From<io::Error> for RunnerError {
 	}
 }
 
-impl<'a> Runner<'a> {
-	pub fn new() -> Result<Runner<'a>, RunnerError> {
-		let mut runner = Runner {
+impl Runner {
+	pub fn new() -> Result<Runner, RunnerError> {
+		let temp_dir = Runner::generate_temp_dir()?;
+		let code_file_path = Runner::generate_code_file(&temp_dir)?;
+		Ok(Runner {
 			code_lines: Default::default(),
-			temp_dir: None,
-			code_file_path: None
-		};
-		runner.init();
-		Ok(runner)
+			temp_dir: temp_dir,
+			code_file_path: code_file_path
+		})
 	}
 
 	pub fn execute(&mut self, next_line: String) -> Result<String, RunnerError> {
@@ -61,33 +61,23 @@ impl<'a> Runner<'a> {
 		Ok("Worked".to_string())
 	}
 
-	fn init(&mut self) -> Result<(), RunnerError> {
-		self.generate_temp_dir()?;
-		self.generate_code_file()?;
-		Ok(())
-	}
-
-	fn generate_temp_dir(&mut self) -> Result<(), RunnerError> {
+	fn generate_temp_dir() -> Result<PathBuf, RunnerError> {
 		let mut curr_dir = current_dir()?.to_path_buf();
 		curr_dir.push(".tmp_ares");
-		let curr_dir = curr_dir.as_path();
-		fs::create_dir(curr_dir)?;
-		self.temp_dir = Some(&curr_dir);
-		Ok(())
+		fs::create_dir(curr_dir.as_path())?;
+		Ok(curr_dir)
 	}
 
-	fn generate_code_file(&mut self) -> Result<(), RunnerError> {
-		let mut code_file_path = self.temp_dir.unwrap().to_path_buf();
+	fn generate_code_file(dir: &PathBuf) -> Result<PathBuf, RunnerError> {
+		let mut code_file_path = dir.clone();
 		code_file_path.push("ares.rs");
-		let code_file_path = code_file_path.as_path();
-		fs::OpenOptions::new().create(true).write(true).open(code_file_path)?;
-		self.code_file_path = Some(&code_file_path);
-		Ok(())		
+		fs::OpenOptions::new().create(true).write(true).open(code_file_path.as_path())?;
+		Ok(code_file_path)
 	}
 }
 
-impl<'a> Drop for Runner<'a> {
+impl Drop for Runner {
 	fn drop(&mut self) {
-		fs::remove_dir_all(self.temp_dir.unwrap()).unwrap();
+		fs::remove_dir_all(self.temp_dir.as_path()).unwrap();
 	}
 }

@@ -3,7 +3,7 @@ use std::error;
 use std::fmt;
 use std::fs;
 use std::io;
-use std::io::Write;
+use std::io::{Write, Read};
 use std::path::{PathBuf, MAIN_SEPARATOR};
 use std::process::Command;
 
@@ -17,6 +17,7 @@ pub struct Runner {
 #[derive(Debug)]
 pub enum RunnerError {
 	Io(io::Error),
+	Compilation(String)
 }
 
 type RunnerResult<T> = Result<T, RunnerError>;
@@ -25,6 +26,7 @@ impl fmt::Display for RunnerError {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match *self {
 			RunnerError::Io(ref err) => err.fmt(f),
+			RunnerError::Compilation(ref string) => string.fmt(f)
 		}
 	}
 }
@@ -33,12 +35,14 @@ impl error::Error for RunnerError {
 	fn description(&self) -> &str {
 		match *self {
 			RunnerError::Io(ref err) => err.description(),
+			RunnerError::Compilation(_) => "Compilation failed"
 		}
 	}
 
 	fn cause(&self) -> Option<&error::Error> {
 		match *self {
 			RunnerError::Io(ref err) => Some(err),
+			RunnerError::Compilation(_) => None
 		}
 	}
 }
@@ -62,7 +66,14 @@ impl Runner {
 
 	pub fn execute(&mut self, next_line: String) -> RunnerResult<String> {
 		self.code_lines.push(next_line);
-		self.run_code()
+		let result = self.run_code();
+		match result {
+			Err(RunnerError::Compilation(_)) => {
+				self.code_lines.pop();
+				result
+			},
+			_ => result 
+		}
 	}
 
 	pub fn loc(&self) -> usize {
@@ -70,13 +81,25 @@ impl Runner {
 	}
 
 	fn run_code(&self) -> RunnerResult<String> {
-		self.write_code()?;
-		self.compile_code()?;
+		// self.verify_code_compiles()?;
+		self.compile_code_with_print()?;
 		self.execute_code()
 	}
 
-	// We'll want to return more info from this eventually
-	fn write_code(&self) -> RunnerResult<()> {
+	fn verify_code_compiles(&self) -> RunnerResult<()> {
+		self.write_code()?;
+		self.compile_code()?;
+		Ok(())
+	}
+
+	fn compile_code_with_print(&self) -> RunnerResult<()> {
+		self.write_code_with_print()?;
+		self.compile_code()?;
+		Ok(())
+	}
+
+	// We'll want to return more info from this eventually. We can also avoid rewriting the entire file...
+	fn write_code_with_print(&self) -> RunnerResult<()> {
 		let mut file = fs::OpenOptions::new().write(true).open(self.code_file_path.as_path())?;
 		file.write(b"fn main() {\n")?;
 		for (i, l) in self.code_lines.iter().enumerate() {
@@ -90,10 +113,22 @@ impl Runner {
 					let before_first_eq = split_by_eq[0];
 					var_name = before_first_eq.split_whitespace().last().unwrap();
 				}
-				new_line = format!("{}\n\tprintln!(\"{{:?}}\", {});", new_line, var_name);
+				new_line = format!("{}\n\tprint!(\"{{:?}}\", {});", new_line, var_name);
 			}
 			file.write(b"\t")?;
 			file.write(new_line.as_bytes())?;
+			file.write(b"\n")?;
+		}
+		file.write(b"}")?;
+		Ok(())
+	}
+
+	fn write_code(&self) -> RunnerResult<()> {
+		let mut file = fs::OpenOptions::new().write(true).open(self.code_file_path.as_path())?;
+		file.write(b"fn main() {\n")?;
+		for l in self.code_lines.iter() {
+			file.write(b"\t")?;
+			file.write(l.as_bytes())?;
 			file.write(b"\n")?;
 		}
 		file.write(b"}")?;
@@ -108,8 +143,21 @@ impl Runner {
 			.output()?;
 		match output.status.code() {
 			Some(0) => Ok(()),
-			_ => panic!("TODO Compilation failed. Use StdOut and StdErr")
+			_ => {
+				let error_to_show = String::from_utf8(output.stderr).unwrap()
+					.split("\nerror: aborting").next().unwrap()
+					.to_string();
+				self.print_full_code();
+				Err(RunnerError::Compilation(error_to_show))
+			}
 		}
+	}
+
+	fn print_full_code(&self) {
+		let mut file = fs::OpenOptions::new().read(true).open(self.code_file_path.as_path()).unwrap();
+		let mut s = String::new();
+		file.read_to_string(&mut s).unwrap();
+		println!("Full code: {}", s);
 	}
 
 	// We'll want to return more info from this eventually

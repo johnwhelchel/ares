@@ -9,12 +9,16 @@ use std::fmt;
 pub type StatusCode = i32;
 pub type Exit = Result<StatusCode, ReplError>;
 
+const STANDARD_PROMPT : &'static str = "->";
+const PENDING_PROMPT : &'static str = "-*";
+
 #[derive(Debug)]
-pub struct Ares {
+pub struct Ares<'a> {
 	rl: Readline<()>,
 	line_number: u32,
 	indent_level: u32,
 	interrupted: bool,
+	prompt_ending: &'a str,
 	runner: Runner,
 }
 
@@ -61,7 +65,7 @@ impl error::Error for ReplError {
 	}
 }
 
-impl Ares {
+impl<'a> Ares<'a> {
 	pub fn init(&mut self) -> Exit {
 		print!("fn main() {{...\n");
 		loop {
@@ -82,9 +86,9 @@ impl Ares {
 
 	fn prompt(&self) -> String {
 		if self.line_number < 1000 {
-			format!(" ares:{:03}:{}-> ", self.line_number, self.indent_level)
+			format!(" ares:{:03}:{}{} ", self.line_number, self.indent_level, self.prompt_ending)
 		} else {
-			format!(" ares:{}:{}-> ", self.line_number, self.indent_level)
+			format!(" ares:{}:{}{} ", self.line_number, self.indent_level, self.prompt_ending)
 		}
 	}
 
@@ -92,9 +96,22 @@ impl Ares {
 		self.interrupted = false;
 		self.rl.add_history_entry(&line);
 		self.line_number += 1;
-		let result = self.runner.execute(line);
-		println!(" {}", result.unwrap());
-		None
+		if line.ends_with(";") {
+			self.prompt_ending = STANDARD_PROMPT;
+			let result = self.runner.execute(line);
+			match result {
+				Ok(output) => println!(" {}", output),
+				Err(RunnerError::Compilation(message)) => {
+					println!(" {}", message)
+				},
+				Err(RunnerError::Io(err)) => println!("IO error: {}", err)
+			}
+			None
+		} else {
+			self.runner.code_lines.push(line);
+			self.prompt_ending = PENDING_PROMPT;
+			None
+		}
 	}
 
 	fn eof_handler(&mut self) -> Option<Exit> {
@@ -116,13 +133,14 @@ impl Ares {
 		}
 	}
 
-	pub fn new() -> Result<Ares, ReplError> {
+	pub fn new() -> Result<Ares<'a>, ReplError> {
 		let runner = Runner::new()?;
 		Ok(Ares {
 			rl: Default::default(),
 			runner: runner,
 			line_number: 1,
 			indent_level: 0,
+			prompt_ending: STANDARD_PROMPT,
 			interrupted: false,
 		})
 	}

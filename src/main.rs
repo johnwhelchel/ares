@@ -1,4 +1,5 @@
 extern crate rustyline;
+extern crate unicode_segmentation;
 extern crate core;
 
 mod ares;

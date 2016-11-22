@@ -2,7 +2,9 @@ use rust_runner::{Runner, RunnerError};
 use rustyline::Editor as Readline;
 
 use rustyline::error::ReadlineError;
+// use unicode_segmentation::UnicodeSegmentation;
 
+// use core::array::FixedSizeArray;
 use std::error;
 use std::fmt;
 
@@ -11,6 +13,7 @@ pub type Exit = Result<StatusCode, ReplError>;
 
 const STANDARD_PROMPT : &'static str = "->";
 const PENDING_PROMPT : &'static str = "-*";
+const ACCEPTABLE_LAST_CHARS : &'static [char] = &[';', '{', '}'];
 
 #[derive(Debug)]
 pub struct Ares<'a> {
@@ -67,12 +70,12 @@ impl error::Error for ReplError {
 
 impl<'a> Ares<'a> {
 	pub fn init(&mut self) -> Exit {
-		print!("fn main() {{...\n");
+		print!("Ares - simple REPL for the Rust language. All lines must end in a semicolon (;), opening brace ({{), or closing brace (}})\nfn main() {{...\n");
 		loop {
 			let prompt = self.prompt();
 			let readline = self.rl.readline(&prompt);
 			let handled_line = match readline {
-				Ok(line) => self.execute_line(line),
+				Ok(line) => self.handle_line(line),
 				Err(ReadlineError::Interrupted) => self.interrupt_handler(),
 				Err(ReadlineError::Eof) => self.eof_handler(),
 				Err(some_other_error) => Some(Err(ReplError::RustyLine(some_other_error))),
@@ -92,15 +95,19 @@ impl<'a> Ares<'a> {
 		}
 	}
 
-	fn execute_line(&mut self, line: String) -> Option<Exit> {
-		self.interrupted = false;
-		self.rl.add_history_entry(&line);
-		self.line_number += 1;
-		if line.ends_with(";") {
+	fn handle_line(&mut self, line: String) -> Option<Exit> {
+		let last_char = line.chars().last().unwrap(); // Ok that it's not a grapheme since we're only comparing against single codepoints chars
+		self.update_ares_state(&line, &last_char);
+		if !(*ACCEPTABLE_LAST_CHARS).iter().any(|c| c.eq(&last_char)) {
+			println!("Ares is currently restricted to handling statements that end in {:?} only.", ACCEPTABLE_LAST_CHARS);
+			return None;
+		}
+
+		if self.should_execute_line(last_char) {
 			self.prompt_ending = STANDARD_PROMPT;
 			let result = self.runner.execute(line);
 			match result {
-				Ok(output) => println!(" {}", output),
+				Ok(output) => println!("=> {}", output),
 				Err(RunnerError::Compilation(message)) => {
 					println!(" {}", message)
 				},
@@ -112,6 +119,21 @@ impl<'a> Ares<'a> {
 			self.prompt_ending = PENDING_PROMPT;
 			None
 		}
+	}
+
+	fn update_ares_state(&mut self, line: &String, last_char: &char) {
+		self.interrupted = false;
+		self.rl.add_history_entry(&line);
+		self.line_number += 1;
+		if *last_char == '}' {
+			self.indent_level = if self.indent_level == 0 { 0 } else { self.indent_level - 1 };
+		} else if *last_char == '{' {
+			self.indent_level += 1;
+		}
+	}
+
+	fn should_execute_line(&self, last_char: char) -> bool {
+		(last_char == ';' || last_char == '}') && self.indent_level == 0
 	}
 
 	fn eof_handler(&mut self) -> Option<Exit> {

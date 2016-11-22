@@ -86,11 +86,11 @@ impl Runner {
 		self.execute_code()
 	}
 
-	fn verify_code_compiles(&self) -> RunnerResult<()> {
-		self.write_code()?;
-		self.compile_code()?;
-		Ok(())
-	}
+	// fn verify_code_compiles(&self) -> RunnerResult<()> {
+	// 	self.write_code()?;
+	// 	self.compile_code()?;
+	// 	Ok(())
+	// }
 
 	fn compile_code_with_print(&self) -> RunnerResult<()> {
 		self.write_code_with_print()?;
@@ -100,7 +100,7 @@ impl Runner {
 
 	// We'll want to return more info from this eventually. We can also avoid rewriting the entire file...
 	fn write_code_with_print(&self) -> RunnerResult<()> {
-		let mut file = fs::OpenOptions::new().write(true).open(self.code_file_path.as_path())?;
+		let mut file = fs::OpenOptions::new().write(true).truncate(true).open(self.code_file_path.as_path())?;
 		file.write(b"fn main() {\n")?;
 		for (i, l) in self.code_lines.iter().enumerate() {
 			let mut new_line = l.clone();
@@ -108,7 +108,7 @@ impl Runner {
 				let mut var_name = "__ares_tmp";
 				let split_by_eq = l.split("=").collect::<Vec<&str>>();
 				if split_by_eq.len() == 1 {
-					new_line = format!("let __ares_tmp = {};", new_line);
+					new_line = format!("let __ares_tmp = {}", new_line);
 				} else {
 					let before_first_eq = split_by_eq[0];
 					var_name = before_first_eq.split_whitespace().last().unwrap();
@@ -123,17 +123,17 @@ impl Runner {
 		Ok(())
 	}
 
-	fn write_code(&self) -> RunnerResult<()> {
-		let mut file = fs::OpenOptions::new().write(true).open(self.code_file_path.as_path())?;
-		file.write(b"fn main() {\n")?;
-		for l in self.code_lines.iter() {
-			file.write(b"\t")?;
-			file.write(l.as_bytes())?;
-			file.write(b"\n")?;
-		}
-		file.write(b"}")?;
-		Ok(())
-	}
+	// fn write_code(&self) -> RunnerResult<()> {
+	// 	let mut file = fs::OpenOptions::new().write(true).open(self.code_file_path.as_path())?;
+	// 	file.write(b"fn main() {\n")?;
+	// 	for l in self.code_lines.iter() {
+	// 		file.write(b"\t")?;
+	// 		file.write(l.as_bytes())?;
+	// 		file.write(b"\n")?;
+	// 	}
+	// 	file.write(b"}")?;
+	// 	Ok(())
+	// }
 
 	// We'll want to return more info from this eventually
 	fn compile_code(&self) -> RunnerResult<()> {

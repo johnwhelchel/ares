@@ -6,6 +6,7 @@ use std::io;
 use std::io::{Write, Read};
 use std::path::{PathBuf, MAIN_SEPARATOR};
 use std::process::Command;
+use std::borrow::Cow;
 
 #[derive(Debug)]
 pub struct Runner {
@@ -101,32 +102,56 @@ impl Runner {
 	// We'll want to return more info from this eventually. We can also avoid rewriting the entire file...
 	fn write_code_with_print(&self) -> RunnerResult<()> {
 		let mut file = fs::OpenOptions::new().write(true).truncate(true).open(self.code_file_path.as_path())?;
+		let mut indent_level = 0i8;
+		let mut beginning_of_scope = &self.code_lines[0][..];
 		file.write(b"fn main() {\n")?;
 		for (i, l) in self.code_lines.iter().enumerate() {
-			let mut new_line = l.clone();
-			let is_last_line = i == self.loc() - 1
-			if is_last_line {
-				new_line = self.adjust_last_line(l)
+			let is_last_line = i == self.loc() - 1;
+			let mut new_line = Cow::Borrowed(l);
+			let last_char = new_line.chars().last().unwrap_or(' ');
+
+			if last_char == '{' && indent_level == 0 {
+				beginning_of_scope = l;
 			}
-			file.write(b"\t")?;
+			if is_last_line {
+				new_line = Runner::adjust_last_line(new_line, beginning_of_scope, last_char);
+			}
+			if last_char == '}' {
+				indent_level -= 1;
+			}
+			for _ in -1..indent_level {
+				file.write(b"\t")?;
+			}
 			file.write(new_line.as_bytes())?;
 			file.write(b"\n")?;
+			if last_char == '{' {
+				indent_level += 1;
+			}
 		}
 		file.write(b"}")?;
 		Ok(())
 	}
 
-	fn adjust_last_line(l : &str) {
-		let split_by_eq = l.split("=").collect::<Vec<&str>>();
-		let mut variable_binding = "";
-		let mut var_name = "__ares_tmp";
-		if split_by_eq.len() == 1 {
-			variable_binding = format!("let __ares_tmp = {}", new_line);
-		} else {
-			let before_first_eq = split_by_eq[0];
-			var_name = before_first_eq.split_whitespace().last().unwrap();
-		}
-		new_line = format!("{}\n\tprint!(\"{{:?}}\", {});", variable_binding, var_name);
+	fn adjust_last_line<'a>(l : Cow<'a, String>, beginning_of_scope : &str, last_char : char) -> Cow<'a, String> {
+		if last_char == ';' {
+			let split_by_eq = l.split("=").collect::<Vec<&str>>();
+			let is_expression = split_by_eq.len() == 1;
+			if is_expression {
+				return Cow::Owned(format!("let __ares_tmp = {}\n\tprint!(\"{{:?}}\", __ares_tmp);", l));
+			} else {
+				let var_name = split_by_eq[0].split_whitespace().last().unwrap();
+				return Cow::Owned(format!("{}\n\tprint!(\"{{:?}}\", {});", l, var_name));
+			}
+		} else
+			if beginning_of_scope.starts_with("fn ") 
+			|| beginning_of_scope.starts_with("impl ") 
+			|| beginning_of_scope.starts_with("trait ")
+			|| beginning_of_scope.starts_with("struct ") {
+				let mut to_print = String::from(beginning_of_scope);
+				to_print.pop(); // Remove ending brace
+				return Cow::Owned(format!("}}\n\tprint!(\"{}\")", to_print))
+			}
+		l
 	}
 
 	// fn write_code(&self) -> RunnerResult<()> {
@@ -163,7 +188,7 @@ impl Runner {
 		let mut file = fs::OpenOptions::new().read(true).open(self.code_file_path.as_path()).unwrap();
 		let mut s = String::new();
 		file.read_to_string(&mut s).unwrap();
-		println!("Full code: {}", s);
+		println!("Full code: \n{}", s);
 	}
 
 	// We'll want to return more info from this eventually

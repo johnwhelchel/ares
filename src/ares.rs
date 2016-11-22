@@ -98,8 +98,8 @@ impl<'a> Ares<'a> {
 	fn handle_line(&mut self, line: String) -> Option<Exit> {
 		let last_char = line.chars().last().unwrap(); // Ok that it's not a grapheme since we're only comparing against single codepoints chars
 		self.update_ares_state(&line, &last_char);
-		if !(*ACCEPTABLE_LAST_CHARS).iter().any(|c| c.eq(&last_char)) {
-			println!("Ares is currently restricted to handling statements that end in {:?} only.", ACCEPTABLE_LAST_CHARS);
+		if !(*ACCEPTABLE_LAST_CHARS).iter().any(|c| c.eq(&last_char)) && self.indent_level == 0 {
+			println!("Ares is currently restricted to executing statements that end in {:?} only.", ACCEPTABLE_LAST_CHARS);
 			return None;
 		}
 

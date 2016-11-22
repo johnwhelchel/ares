@@ -104,16 +104,9 @@ impl Runner {
 		file.write(b"fn main() {\n")?;
 		for (i, l) in self.code_lines.iter().enumerate() {
 			let mut new_line = l.clone();
-			if i == self.loc() - 1 {
-				let mut var_name = "__ares_tmp";
-				let split_by_eq = l.split("=").collect::<Vec<&str>>();
-				if split_by_eq.len() == 1 {
-					new_line = format!("let __ares_tmp = {}", new_line);
-				} else {
-					let before_first_eq = split_by_eq[0];
-					var_name = before_first_eq.split_whitespace().last().unwrap();
-				}
-				new_line = format!("{}\n\tprint!(\"{{:?}}\", {});", new_line, var_name);
+			let is_last_line = i == self.loc() - 1
+			if is_last_line {
+				new_line = self.adjust_last_line(l)
 			}
 			file.write(b"\t")?;
 			file.write(new_line.as_bytes())?;
@@ -121,6 +114,19 @@ impl Runner {
 		}
 		file.write(b"}")?;
 		Ok(())
+	}
+
+	fn adjust_last_line(l : &str) {
+		let split_by_eq = l.split("=").collect::<Vec<&str>>();
+		let mut variable_binding = "";
+		let mut var_name = "__ares_tmp";
+		if split_by_eq.len() == 1 {
+			variable_binding = format!("let __ares_tmp = {}", new_line);
+		} else {
+			let before_first_eq = split_by_eq[0];
+			var_name = before_first_eq.split_whitespace().last().unwrap();
+		}
+		new_line = format!("{}\n\tprint!(\"{{:?}}\", {});", variable_binding, var_name);
 	}
 
 	// fn write_code(&self) -> RunnerResult<()> {

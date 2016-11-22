@@ -1,0 +1,3 @@
+Line history
+Auto correct
+Popping all bad code lines when compilation fails

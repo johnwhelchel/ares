@@ -13,7 +13,7 @@ pub type Exit = Result<StatusCode, ReplError>;
 
 const STANDARD_PROMPT : &'static str = "->";
 const PENDING_PROMPT : &'static str = "-*";
-const ACCEPTABLE_LAST_CHARS : &'static [char] = &[';', '{', '}'];
+const ACCEPTABLE_LAST_CHARS : &'static [char] = &[';', '{', '}', ']'];
 
 #[derive(Debug)]
 pub struct Ares<'a> {
@@ -70,7 +70,8 @@ impl error::Error for ReplError {
 
 impl<'a> Ares<'a> {
 	pub fn init(&mut self) -> Exit {
-		print!("Ares - simple REPL for the Rust language. All lines must end in a semicolon (;), opening brace ({{), or closing brace (}})\nfn main() {{...\n");
+		print!("Ares - simple REPL for the Rust language. All lines must end in a semicolon ';', opening brace '{{', or closing brace '}}'\n\
+		Using statements, structs, impl, and traits should all work. Note that you'll want to #[derive(Debug)] any structs before instantiating.\nfn main() {{...\n");
 		loop {
 			let prompt = self.prompt();
 			let readline = self.rl.readline(&prompt);

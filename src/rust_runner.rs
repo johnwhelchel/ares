@@ -137,7 +137,14 @@ impl Runner {
 			let split_by_eq = l.split("=").collect::<Vec<&str>>();
 			let is_expression = split_by_eq.len() == 1;
 			if is_expression {
-				return Cow::Owned(format!("let __ares_tmp = {}\n\tprint!(\"{{:?}}\", __ares_tmp);", l));
+				let mut split_by_whitespace = split_by_eq[0].split_whitespace();
+				let is_use = split_by_whitespace.next().unwrap() == "use";
+				if is_use {
+					let used_value = split_by_whitespace.next().unwrap();
+					return Cow::Owned(format!("{}\nprint!(\"Using {}\");", l, used_value))
+				} else {
+					return Cow::Owned(format!("let __ares_tmp = {}\n\tprint!(\"{{:?}}\", __ares_tmp);", l));
+				}
 			} else {
 				let var_name = split_by_eq[0].split_whitespace().last().unwrap();
 				return Cow::Owned(format!("{}\n\tprint!(\"{{:?}}\", {});", l, var_name));
@@ -149,7 +156,7 @@ impl Runner {
 			|| beginning_of_scope.starts_with("struct ") {
 				let mut to_print = String::from(beginning_of_scope);
 				to_print.pop(); // Remove ending brace
-				return Cow::Owned(format!("}}\n\tprint!(\"{}\")", to_print))
+				return Cow::Owned(format!("}}\n\tprint!(\"{}\");", to_print))
 			}
 		l
 	}
